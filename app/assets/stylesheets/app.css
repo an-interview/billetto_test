@@ -95,3 +95,64 @@ body {
 .events__empty {
   color: var(--muted);
 }
+
+.site-header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.site-header__inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.site-header__brand {
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.site-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.site-header__user {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.site-header__link {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.site-header__button {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.auth {
+  max-width: 420px;
+  margin: 3rem auto;
+  padding: 0 1rem;
+  text-align: center;
+}
+
+.auth__hint {
+  color: var(--muted);
+}

@@ -3,7 +3,13 @@
 # your test database is "scratch space" for the test suite and is wiped
 # and recreated between test runs. Don't rely on the data there!
 
+# Clerk's real middleware needs API keys and a network handshake; swap it for a
+# test double (see test/support/test_clerk_middleware.rb).
+ENV["CLERK_SKIP_RAILTIE"] = "1"
+require_relative "../../test/support/test_clerk_middleware"
+
 Rails.application.configure do
+  config.middleware.use TestClerkMiddleware
   # Settings specified here will take precedence over those in config/application.rb.
 
   # While tests run files are not watched, reloading is not necessary.

@@ -1,0 +1,23 @@
+<% content_for :title, "Sign up" %>
+
+<main class="auth">
+  <h1>Sign up</h1>
+  <div id="clerk-sign-up"></div>
+  <p class="auth__hint">
+    Already have an account? <%= link_to "Sign in", sign_in_path %>.
+  </p>
+</main>
+
+<script>
+  window.addEventListener("load", async () => {
+    if (!window.Clerk) return;
+    await Clerk.load();
+    if (Clerk.user) {
+      window.location = "<%= root_path %>";
+      return;
+    }
+    Clerk.mountSignUp(document.getElementById("clerk-sign-up"), {
+      afterSignUpUrl: "<%= root_path %>"
+    });
+  });
+</script>

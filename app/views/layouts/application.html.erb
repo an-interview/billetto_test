@@ -21,9 +21,39 @@
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
+
+    <% if clerk_enabled? %>
+      <script
+        defer
+        crossorigin="anonymous"
+        data-clerk-publishable-key="<%= clerk_publishable_key %>"
+        src="https://<%= clerk_frontend_api %>/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+        type="text/javascript"></script>
+    <% end %>
   </head>
 
   <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <%= link_to "Events", root_path, class: "site-header__brand" %>
+
+        <nav class="site-header__nav">
+          <% if authenticated? %>
+            <span class="site-header__user"><%= current_user.id %></span>
+            <button
+              type="button"
+              class="site-header__button"
+              onclick="if (window.Clerk) Clerk.signOut({ redirectUrl: '<%= root_path %>' })">
+              Sign out
+            </button>
+          <% else %>
+            <%= link_to "Sign in", sign_in_path, class: "site-header__link" %>
+            <%= link_to "Sign up", sign_up_path, class: "site-header__button" %>
+          <% end %>
+        </nav>
+      </div>
+    </header>
+
     <%= yield %>
   </body>
 </html>
