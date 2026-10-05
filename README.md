@@ -70,8 +70,9 @@ third-party APIs.
 
 ```
 app/
-  domain/                 # bounded context: Events
-    events.rb             # module wiring (load!, subscriptions)
+  domain/                 # bounded contexts
+    events.rb             # Events module wiring (load!, subscriptions)
+    read_models.rb        # ReadModels module wiring
     events/
       event_imported.rb   # facts
       event_upvoted.rb
@@ -82,7 +83,8 @@ app/
       vote_recorder.rb         # command handler (publishes vote facts)
     read_models/
       event_vote_counts.rb     # async read model of vote tallies
-  integrations/billetto/  # ACL over the Billetto API (adapter, mapper, fake adapter)
+  integrations/billetto.rb # Billetto ACL module + error classes
+  integrations/billetto/   # adapter, http client, event mapper, fake adapter
   controllers/            # EventsController, VotesController, SessionsController
 lib/                      # command bus + middleware, Fact, ObjectRepository, Handler, subscriptions
 ```
@@ -101,6 +103,7 @@ Flow for a vote:
 POST /events/:event_id/vote
   -> VotesController (thin) -> command_bus.call(Events::CastVote)
   -> Events::VoteRecorder -> publishes Events::EventUpvoted to stream "Event$<id>"
+     (and links it into the "EventVotes" stream)
   -> ReadModels::EventVoteCounts (async) updates event_vote_counts
   -> listing shows "N up · N down · N total"
 ```
@@ -139,7 +142,8 @@ POST /events/:event_id/vote
   event's correlation / causation context when they run.
 - **Testing**: Minitest. The Billetto adapter is stubbed with a fake adapter in
   tests; Clerk is replaced with a test double that fabricates a session from a
-  header (`X-Test-Clerk-User-Id`), so no keys or network are needed.
+  request header (`X-Test-Clerk-User-Id`) for integration tests, or from the
+  Rails session for browser tests, so no keys or network are needed.
 - **Assumptions / limitations**:
   - A single Billetto organisation's public events; no pagination yet (the API
     caps `limit` at 100).
