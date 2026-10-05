@@ -34,4 +34,16 @@ class VotesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to events_url
     assert_equal [ "Events::EventDownvoted" ], facts_for(event).map(&:event_type)
   end
+
+  test "handles an invalid direction with a friendly message" do
+    event = events(:upcoming)
+
+    post event_vote_url(event),
+      params: { direction: "sideways" },
+      headers: { "X-Test-Clerk-User-Id" => "user_1" }
+
+    assert_redirected_to events_url
+    assert_equal "That vote isn't valid.", flash[:alert]
+    assert_empty facts_for(event)
+  end
 end
