@@ -7,6 +7,7 @@ facts = Rails.configuration.event_store.read.of_type(
 )
 
 ReadModels::EventVoteCounts::Count.delete_all
+ProcessedEvent.where(handler: ReadModels::EventVoteCounts.name).delete_all
 facts.each { |fact| counts.call(fact) }
 
 puts "Rebuilt #{ReadModels::EventVoteCounts::Count.count} vote count(s) from #{facts.count} fact(s)"

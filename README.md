@@ -123,7 +123,10 @@ POST /events/:event_id/vote
 - **Voting**: each vote is an `EventUpvoted` / `EventDownvoted` fact carrying the
   Clerk `user_id`. Votes are immutable facts rather than mutable rows.
 - **Counts**: maintained by an asynchronous read model; `script/rebuild_event_vote_counts.rb`
-  rebuilds them from the event store at any time.
+  rebuilds them from the event store at any time. Applying is idempotent — each
+  fact is claimed in the `processed_events` ledger, so job retries or replays do
+  not double count — and the counter update is a single atomic upsert, so
+  concurrent first votes for an event cannot race on row creation.
 - **Authentication**: Clerk's Rack middleware validates the session and
   `Clerk::Authenticatable` exposes it. We read the user id from the session token
   claims instead of calling the Clerk API on every request.
