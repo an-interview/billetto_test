@@ -1,0 +1,43 @@
+<% content_for :title, "Events" %>
+
+<main class="events">
+  <header class="events__header">
+    <h1>Events</h1>
+  </header>
+
+  <% if @events.any? %>
+    <ul class="events__list">
+      <% @events.each do |event| %>
+        <li class="event" id="<%= dom_id(event) %>">
+          <% if event.image_url.present? %>
+            <img class="event__image" src="<%= event.image_url %>" alt="<%= event.title %>" loading="lazy">
+          <% end %>
+
+          <div class="event__body">
+            <h2 class="event__title">
+              <% if event.url.present? %>
+                <%= link_to event.title, event.url, target: "_blank", rel: "noopener" %>
+              <% else %>
+                <%= event.title %>
+              <% end %>
+            </h2>
+
+            <p class="event__date"><%= event_date(event) %></p>
+
+            <% if event.organizer_name.present? || event.venue.present? %>
+              <p class="event__organizer">
+                <%= [ event.organizer_name, event.venue ].compact_blank.join(" — ") %>
+              </p>
+            <% end %>
+
+            <% if event.description.present? %>
+              <p class="event__description"><%= truncate(event.description, length: 160) %></p>
+            <% end %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="events__empty">No events yet.</p>
+  <% end %>
+</main>
