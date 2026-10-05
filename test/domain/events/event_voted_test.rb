@@ -23,6 +23,20 @@ class Events::EventVotedTest < ActiveSupport::TestCase
     assert_equal [ fact.event_id ], linked
   end
 
+  test "carries the direction it replaced" do
+    fact = Events::EventUpvoted.strict(
+      data: { event_id: 7, user_id: "user_1", previous_direction: "down" }
+    )
+
+    assert_equal "down", fact.payload.fetch(:previous_direction)
+  end
+
+  test "previous direction is optional" do
+    fact = Events::EventUpvoted.strict(data: { event_id: 7, user_id: "user_1" })
+
+    assert_nil fact.payload[:previous_direction]
+  end
+
   test "requires a user id" do
     assert_raises(Fact::InvalidData) { Events::EventUpvoted.strict(data: { event_id: 7 }) }
   end

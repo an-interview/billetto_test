@@ -125,7 +125,11 @@ POST /events/:event_id/vote
   facts are additionally linked into an `EventVotes` stream so the vote-count
   read model can be rebuilt from one stream.
 - **Voting**: each vote is an `EventUpvoted` / `EventDownvoted` fact carrying the
-  Clerk `user_id`. Votes are immutable facts rather than mutable rows.
+  Clerk `user_id` and the direction it replaced. Votes are immutable facts rather
+  than mutable rows. Each user has at most one active vote per event: repeating a
+  direction records nothing, and switching records a fact whose `previous_direction`
+  moves the tally. Concurrent votes for the same (event, user) are serialized with
+  a transaction advisory lock, so a double-click cannot record two votes.
 - **Counts**: maintained by an asynchronous read model; `script/rebuild_event_vote_counts.rb`
   rebuilds them by reading the `EventVotes` stream. Applying is idempotent — each
   fact is claimed in the `processed_events` ledger, so job retries or replays do
@@ -148,8 +152,8 @@ POST /events/:event_id/vote
   - A single Billetto organisation's public events. The adapter follows the
     API's `has_more` / `next_url` cursor, so an import fetches every page;
     `limit` is the page size (the API caps it at 100).
-  - Voting is append-only; there is no "one vote per user" toggle yet. Adding it
-    would mean projecting each user's current vote into a read model.
+  - Vote counts are eventually consistent: the read model runs asynchronously,
+    so the listing may trail the latest vote by a moment.
   - The Clerk sign-up / sign-in / sign-out UI is JavaScript driven. Browser
     tests authenticate through a local fake Clerk component
     (`test/support/fake_clerk.js`) and a test-only endpoint, so the full flow

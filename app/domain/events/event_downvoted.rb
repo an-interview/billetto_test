@@ -1,6 +1,6 @@
 module Events
   class EventDownvoted < Fact
-    SCHEMA = { event_id: Integer, user_id: String }.freeze
+    SCHEMA = { event_id: Integer, user_id: String, previous_direction: [ String ] }.freeze
 
     def stream_names
       [ "Event$#{payload.fetch(:event_id)}", VOTES_STREAM ]

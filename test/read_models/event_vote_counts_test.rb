@@ -3,12 +3,16 @@ require "test_helper"
 class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
   include ActiveJob::TestHelper
 
-  def upvote(event, user_id: "u")
-    Events::EventUpvoted.strict(data: { event_id: event.id, user_id: user_id })
+  def upvote(event, user_id: "u", previous: nil)
+    Events::EventUpvoted.strict(
+      data: { event_id: event.id, user_id: user_id, previous_direction: previous }
+    )
   end
 
-  def downvote(event, user_id: "u")
-    Events::EventDownvoted.strict(data: { event_id: event.id, user_id: user_id })
+  def downvote(event, user_id: "u", previous: nil)
+    Events::EventDownvoted.strict(
+      data: { event_id: event.id, user_id: user_id, previous_direction: previous }
+    )
   end
 
   def count_for(event)
@@ -50,6 +54,39 @@ class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
 
     assert_equal 1, ReadModels::EventVoteCounts::Count.where(event_id: event.id).count
     assert_equal 2, count_for(event).upvotes
+  end
+
+  test "a repeated vote for the same user does not change the tally" do
+    event = events(:upcoming)
+    handler = ReadModels::EventVoteCounts.new
+
+    handler.call(upvote(event, user_id: "user_1"))
+    handler.call(upvote(event, user_id: "user_1", previous: "up"))
+
+    assert_equal 1, count_for(event).upvotes
+    assert_equal 0, count_for(event).downvotes
+  end
+
+  test "switching a vote moves the tally to the new direction" do
+    event = events(:upcoming)
+    handler = ReadModels::EventVoteCounts.new
+
+    handler.call(upvote(event, user_id: "user_1"))
+    handler.call(downvote(event, user_id: "user_1", previous: "up"))
+
+    assert_equal 0, count_for(event).upvotes
+    assert_equal 1, count_for(event).downvotes
+  end
+
+  test "switch deltas are independent of application order" do
+    event = events(:upcoming)
+    handler = ReadModels::EventVoteCounts.new
+
+    handler.call(downvote(event, user_id: "user_1", previous: "up"))
+    handler.call(upvote(event, user_id: "user_1"))
+
+    assert_equal 0, count_for(event).upvotes
+    assert_equal 1, count_for(event).downvotes
   end
 
   test "is subscribed to the vote facts" do

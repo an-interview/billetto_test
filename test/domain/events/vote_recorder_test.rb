@@ -31,6 +31,42 @@ class Events::VoteRecorderTest < ActiveSupport::TestCase
     end
   end
 
+  test "records only one vote per user per event" do
+    event = events(:upcoming)
+
+    2.times { Events::VoteRecorder.new.call(command(event, direction: "up")) }
+
+    assert_equal [ "Events::EventUpvoted" ], facts_for(event).map(&:event_type)
+  end
+
+  test "switches an existing vote and records what it replaced" do
+    event = events(:upcoming)
+
+    Events::VoteRecorder.new.call(command(event, direction: "up"))
+    Events::VoteRecorder.new.call(command(event, direction: "down"))
+
+    facts = facts_for(event)
+    assert_equal [ "Events::EventUpvoted", "Events::EventDownvoted" ], facts.map(&:event_type)
+    assert_equal "up", facts.last.payload.fetch(:previous_direction)
+  end
+
+  test "records the first vote without a previous direction" do
+    event = events(:upcoming)
+
+    Events::VoteRecorder.new.call(command(event, direction: "up"))
+
+    assert_nil facts_for(event).first.payload[:previous_direction]
+  end
+
+  test "keeps each user's vote separate" do
+    event = events(:upcoming)
+
+    Events::VoteRecorder.new.call(command(event, direction: "up", user_id: "user_1"))
+    Events::VoteRecorder.new.call(command(event, direction: "up", user_id: "user_2"))
+
+    assert_equal 2, facts_for(event).size
+  end
+
   test "rejects an unknown event tid" do
     assert_raises(ObjectRepository::UnknownType) do
       Events::VoteRecorder.new.call(
