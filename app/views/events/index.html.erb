@@ -33,6 +33,15 @@
             <% if event.description.present? %>
               <p class="event__description"><%= truncate(event.description, length: 160) %></p>
             <% end %>
+
+            <div class="event__votes">
+              <%= button_to "▲ Upvote", event_vote_path(event),
+                    params: { direction: "up" },
+                    class: "vote-button" %>
+              <%= button_to "▼ Downvote", event_vote_path(event),
+                    params: { direction: "down" },
+                    class: "vote-button" %>
+            </div>
           </div>
         </li>
       <% end %>

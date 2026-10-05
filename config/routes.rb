@@ -2,7 +2,9 @@ Rails.application.routes.draw do
   mount RailsEventStore::Browser => "/res" if Rails.env.development?
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
-  resources :events, only: :index
+  resources :events, only: :index do
+    resource :vote, only: :create
+  end
 
   get "sign-in", to: "sessions#sign_in", as: :sign_in
   get "sign-up", to: "sessions#sign_up", as: :sign_up

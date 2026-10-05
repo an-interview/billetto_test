@@ -156,3 +156,26 @@ body {
 .auth__hint {
   color: var(--muted);
 }
+
+.event__votes {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.vote-button {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.vote-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

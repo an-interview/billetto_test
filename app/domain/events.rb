@@ -3,7 +3,15 @@ module Events
   # Referenced so Zeitwerk loads the classes, letting the command handler
   # self-register with the command bus.
   def self.load!
-    [ ImportPublicEvents, Importer, EventImported ]
+    [
+      ImportPublicEvents,
+      Importer,
+      EventImported,
+      CastVote,
+      VoteRecorder,
+      EventUpvoted,
+      EventDownvoted
+    ]
     self
   end
 
