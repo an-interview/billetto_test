@@ -36,4 +36,13 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".site-header__user", text: "user_123"
     assert_select ".site-header__button", text: "Sign out"
   end
+
+  test "header renders a real sign out form so it works without JavaScript" do
+    get root_url, headers: { "X-Test-Clerk-User-Id" => "user_123" }
+
+    assert_select "form[action=?][method=?]", sign_out_path, "post" do
+      assert_select "input[name=_method][value=delete]"
+      assert_select "button[type=submit]", "Sign out"
+    end
+  end
 end

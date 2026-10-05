@@ -40,12 +40,15 @@
         <nav class="site-header__nav">
           <% if authenticated? %>
             <span class="site-header__user"><%= current_user.id %></span>
-            <button
-              type="button"
-              class="site-header__button"
-              onclick="if (window.Clerk) Clerk.signOut({ redirectUrl: '<%= root_path %>' })">
-              Sign out
-            </button>
+            <%= form_with url: sign_out_path, method: :delete,
+                  class: "site-header__form",
+                  data: {
+                    controller: "sign-out",
+                    sign_out_redirect_url_value: root_path,
+                    action: "submit->sign-out#submit"
+                  } do %>
+              <button type="submit" class="site-header__button">Sign out</button>
+            <% end %>
           <% else %>
             <%= link_to "Sign in", sign_in_path, class: "site-header__link" %>
             <%= link_to "Sign up", sign_up_path, class: "site-header__button" %>

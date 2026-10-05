@@ -129,7 +129,9 @@ POST /events/:event_id/vote
   concurrent first votes for an event cannot race on row creation.
 - **Authentication**: Clerk's Rack middleware validates the session and
   `Clerk::Authenticatable` exposes it. We read the user id from the session token
-  claims instead of calling the Clerk API on every request.
+  claims instead of calling the Clerk API on every request. Sign out is a real
+  `DELETE /sign-out` form, progressively enhanced by a Stimulus controller that
+  revokes the Clerk session when clerk-js is present.
 - **Command bus**: commands go through a chain of middleware (transaction,
   instrumentation, causation/correlation ids) before reaching their handler, as
   described in the developer guide. Async event handlers restore the causing
