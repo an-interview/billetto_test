@@ -55,9 +55,9 @@ class CommandTest < ActiveSupport::TestCase
     assert_equal "hello ada", bus.call(Greet.new(name: "ada"))
   end
 
-  test "handles registers a command handler on the bus" do
+  test "register_commands registers service handlers on the bus" do
     bus = Command::Bus.new
-    Command.install(bus)
+    ApplicationSubscriptions.register_commands(bus, handler_classes: [ RecordingService ])
 
     assert_equal "via service", bus.call(Record.new)
   end

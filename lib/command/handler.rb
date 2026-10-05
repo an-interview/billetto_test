@@ -6,9 +6,11 @@ module Command
     end
 
     module ClassMethods
+      # Declares that this service handles a command. The registration on the
+      # command bus happens in ApplicationSubscriptions#register_commands, per
+      # the developer guide (executable commands self-register instead).
       def handles(command_class, method_name)
         command_handlers[command_class] = method_name
-        Command.register(command_class, ->(command) { new.call(command) })
       end
 
       def command_handlers
