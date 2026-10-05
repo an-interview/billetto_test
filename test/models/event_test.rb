@@ -53,6 +53,10 @@ class EventTest < ActiveSupport::TestCase
     assert_equal "event_#{event.id}", event.tid
   end
 
+  test "is registered with ObjectRepository" do
+    assert_equal Event, ObjectRepository.registered("event")
+  end
+
   test "orders by starts_at" do
     assert_equal Event.ordered.pluck(:starts_at), Event.ordered.pluck(:starts_at).sort
   end

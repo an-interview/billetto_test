@@ -1,5 +1,10 @@
 # Bounded context for Billetto events: ingestion, listing and voting.
 module Events
+  # Event handlers / process managers owned by this module. There are none yet:
+  # the module publishes facts that the application read models consume (see
+  # ReadModels).
+  EVENT_HANDLERS = [].freeze
+
   # Referenced so Zeitwerk loads the classes, letting the command handler
   # self-register with the command bus.
   def self.load!
@@ -17,6 +22,6 @@ module Events
 
   # Handler subscriptions contributed to ApplicationSubscriptions.
   def self.subscriptions
-    [].map(&:subscriptions).reduce({}, :merge)
+    EVENT_HANDLERS.map(&:subscriptions).reduce({}, :merge)
   end
 end
