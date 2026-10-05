@@ -163,6 +163,13 @@ body {
   margin-top: 0.5rem;
 }
 
+.event__score {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .vote-button {
   flex: 1;
   background: transparent;

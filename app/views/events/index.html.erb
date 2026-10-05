@@ -34,6 +34,12 @@
               <p class="event__description"><%= truncate(event.description, length: 160) %></p>
             <% end %>
 
+            <% counts = @vote_counts[event.id] %>
+            <p class="event__score">
+              <%= event_upvotes(counts) %> up · <%= event_downvotes(counts) %> down ·
+              <%= event_total_votes(counts) %> total
+            </p>
+
             <div class="event__votes">
               <%= button_to "▲ Upvote", event_vote_path(event),
                     params: { direction: "up" },

@@ -4,6 +4,7 @@ class ApplicationSubscriptions
     def handlers
       top_level_subscriptions
         .merge(Events.subscriptions)
+        .merge(ReadModels::EventVoteCounts.subscriptions)
     end
 
     def top_level_subscriptions

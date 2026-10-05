@@ -42,4 +42,21 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".events__empty"
   end
+
+  test "shows vote counts" do
+    event = events(:upcoming)
+    ReadModels::EventVoteCounts::Count.create!(event: event, upvotes: 2, downvotes: 1)
+
+    get events_url
+
+    assert_response :success
+    assert_match(/2 up/, response.body)
+    assert_match(/3 total/, response.body)
+  end
+
+  test "shows zero counts when an event has no votes" do
+    get events_url
+
+    assert_match(/0 total/, response.body)
+  end
 end

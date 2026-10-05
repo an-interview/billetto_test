@@ -6,4 +6,16 @@ module EventsHelper
 
     "#{l(event.starts_at, format: :long)} – #{l(event.ends_at, format: :long)}"
   end
+
+  def event_upvotes(count)
+    count ? count.upvotes : 0
+  end
+
+  def event_downvotes(count)
+    count ? count.downvotes : 0
+  end
+
+  def event_total_votes(count)
+    count ? count.upvotes + count.downvotes : 0
+  end
 end
