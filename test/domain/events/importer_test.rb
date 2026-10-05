@@ -72,6 +72,15 @@ class Events::ImporterTest < ActiveSupport::TestCase
     assert_nil Event.find_by(external_id: "imp-1")
   end
 
+  test "imports every page when the adapter paginates" do
+    payloads = 3.times.map { |i| payload("id" => "imp-#{i}") }
+
+    result = importer(*payloads).call(command(limit: 1))
+
+    assert_equal 3, result.imported
+    assert_equal 3, Event.where("external_id LIKE 'imp-%'").count
+  end
+
   test "rejects an invalid limit" do
     assert_raises(Command::ValidationError) { importer(payload).call(command(limit: 0)) }
   end

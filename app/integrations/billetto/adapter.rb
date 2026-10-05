@@ -20,9 +20,22 @@ module Billetto
     end
 
     def list_public_events(limit: 10)
+      events = []
       body = get("public/events", limit: limit)
-      events = body["data"]
-      raise ResponseError, "expected a data array, got #{events.class}" unless events.is_a?(Array)
+      visited = {}
+
+      loop do
+        events.concat(events_from(body))
+
+        break unless body["has_more"]
+
+        next_url = body["next_url"]
+        break if next_url.blank?
+        break if visited.key?(next_url)
+
+        visited[next_url] = true
+        body = get_url(next_url)
+      end
 
       events
     end
@@ -31,12 +44,33 @@ module Billetto
 
     attr_reader :api_key, :base_url, :http_client
 
+    def events_from(body)
+      events = body["data"]
+      raise ResponseError, "expected a data array, got #{events.class}" unless events.is_a?(Array)
+
+      events
+    end
+
     def get(path, params)
+      request(build_uri(path, params))
+    end
+
+    # Follows a `next_url` from the API, which may be absolute or relative,
+    # carrying the `after` cursor. Refuses to leave the configured host so the
+    # API keypair header is never sent elsewhere.
+    def get_url(url)
+      uri = URI.join("#{base_url.chomp("/")}/", url)
+      return request(uri) if uri.host == URI.parse(base_url).host
+
+      raise ResponseError, "refusing to follow next_url to #{uri.host}"
+    end
+
+    def request(uri)
       ensure_api_key!
 
       status, body =
         http_client.call(
-          uri: build_uri(path, params),
+          uri: uri,
           headers: headers,
           open_timeout: 5,
           read_timeout: 10

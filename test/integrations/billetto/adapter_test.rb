@@ -20,6 +20,22 @@ class Billetto::AdapterTest < ActiveSupport::TestCase
     end
   end
 
+  # Returns a queued response per call and records every request, so a test can
+  # exercise multi-page responses.
+  class Sequence
+    attr_reader :calls
+
+    def initialize(*responses)
+      @responses = responses
+      @calls = []
+    end
+
+    def call(**kwargs)
+      @calls << kwargs
+      @responses.shift
+    end
+  end
+
   def adapter(client:, api_key: "test-key")
     Billetto::Adapter.new(api_key: api_key, http_client: client)
   end
@@ -37,6 +53,48 @@ class Billetto::AdapterTest < ActiveSupport::TestCase
     assert_equal "secret", client.last_call[:headers]["Api-Keypair"]
     assert_equal "/api/v3/public/events", client.last_call[:uri].path
     assert_equal "limit=10", client.last_call[:uri].query
+  end
+
+  test "follows next_url until has_more is false" do
+    first = {
+      "data" => [ { "id" => "1" } ],
+      "has_more" => true,
+      "next_url" => "https://billetto.dk/api/v3/public/events?limit=1&after=abc"
+    }
+    second = { "data" => [ { "id" => "2" } ], "has_more" => false }
+    client = Sequence.new([ 200, first.to_json ], [ 200, second.to_json ])
+
+    events = adapter(client: client).list_public_events(limit: 1)
+
+    assert_equal [ { "id" => "1" }, { "id" => "2" } ], events
+    assert_equal 2, client.calls.size
+    assert_equal "/api/v3/public/events", client.calls.last[:uri].path
+    assert_equal "limit=1&after=abc", client.calls.last[:uri].query
+  end
+
+  test "stops when has_more repeats a next_url" do
+    page = {
+      "data" => [ { "id" => "1" } ],
+      "has_more" => true,
+      "next_url" => "https://billetto.dk/api/v3/public/events?after=loop"
+    }
+    client = Sequence.new([ 200, page.to_json ], [ 200, page.to_json ])
+
+    events = adapter(client: client).list_public_events(limit: 1)
+
+    assert_equal [ { "id" => "1" }, { "id" => "1" } ], events
+    assert_equal 2, client.calls.size
+  end
+
+  test "refuses to follow next_url to another host" do
+    page = {
+      "data" => [],
+      "has_more" => true,
+      "next_url" => "https://evil.example/api/v3/public/events?after=x"
+    }
+    client = Sequence.new([ 200, page.to_json ])
+
+    assert_raises(Billetto::ResponseError) { adapter(client: client).list_public_events(limit: 1) }
   end
 
   test "raises ConfigurationError without an api key" do

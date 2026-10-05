@@ -24,8 +24,12 @@ module Billetto
       @events = events
     end
 
+    # Mirrors the real adapter by paging through the whole set: `limit` is the
+    # page size, and every event is returned regardless of how many pages it
+    # spans.
     def list_public_events(limit: 10)
-      @events.first(limit).map(&:dup)
+      page_size = [ limit.to_i, 1 ].max
+      @events.each_slice(page_size).flat_map { |page| page.map(&:dup) }
     end
   end
 end

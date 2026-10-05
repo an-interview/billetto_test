@@ -8,10 +8,10 @@ class Billetto::FakeAdapterTest < ActiveSupport::TestCase
     assert_equal "Rails Meetup", event["title"]
   end
 
-  test "honours the limit" do
-    adapter = Billetto::FakeAdapter.new(events: [ { "id" => "1" }, { "id" => "2" } ])
+  test "pages through every event" do
+    adapter = Billetto::FakeAdapter.new(events: [ { "id" => "1" }, { "id" => "2" }, { "id" => "3" } ])
 
-    assert_equal 1, adapter.list_public_events(limit: 1).size
+    assert_equal 3, adapter.list_public_events(limit: 1).size
   end
 
   test "the configured adapter is the fake in test" do

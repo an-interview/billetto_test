@@ -145,8 +145,9 @@ POST /events/:event_id/vote
   request header (`X-Test-Clerk-User-Id`) for integration tests, or from the
   Rails session for browser tests, so no keys or network are needed.
 - **Assumptions / limitations**:
-  - A single Billetto organisation's public events; no pagination yet (the API
-    caps `limit` at 100).
+  - A single Billetto organisation's public events. The adapter follows the
+    API's `has_more` / `next_url` cursor, so an import fetches every page;
+    `limit` is the page size (the API caps it at 100).
   - Voting is append-only; there is no "one vote per user" toggle yet. Adding it
     would mean projecting each user's current vote into a read model.
   - The Clerk sign-up / sign-in / sign-out UI is JavaScript driven. Browser
