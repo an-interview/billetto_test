@@ -1,0 +1,62 @@
+require "application_system_test_case"
+
+# Drives the sign-up / sign-in / sign-out flow and voting in a real browser.
+#
+# Clerk's hosted widget needs real keys and network access, so this test loads
+# the local fake component (test/support/fake_clerk.js) and authenticates
+# through the test-only /test/sign-in endpoint. Everything else — pages,
+# redirects, session, authorization, voting and the read model — is real.
+class AuthFlowSystemTest < ApplicationSystemTestCase
+  driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1400 ]
+
+  setup do
+    # Run the async vote read model inline so the count is projected within the
+    # vote request and visible on the next page load.
+    @queue_adapter = ActiveJob::Base.queue_adapter
+    ActiveJob::Base.queue_adapter = :inline
+  end
+
+  teardown do
+    ActiveJob::Base.queue_adapter = @queue_adapter
+  end
+
+  test "sign up, vote, sign out, then voting is restricted again" do
+    event = events(:upcoming)
+
+    visit sign_up_path
+    fill_in "user_id", with: "user_browser"
+    click_button "Create account"
+
+    assert_current_path root_path
+    assert_text "user_browser"
+
+    within "#event_#{event.id}" do
+      click_button "▲ Upvote"
+    end
+
+    assert_text "1 total"
+
+    click_button "Sign out"
+
+    assert_current_path root_path
+    assert_text "Sign in"
+
+    first(:button, "▲ Upvote").click
+
+    assert_current_path sign_in_path
+  end
+
+  test "sign in and sign out" do
+    visit sign_in_path
+    fill_in "user_id", with: "user_login"
+    click_button "Sign in"
+
+    assert_current_path root_path
+    assert_text "user_login"
+
+    click_button "Sign out"
+
+    assert_current_path root_path
+    assert_text "Sign in"
+  end
+end

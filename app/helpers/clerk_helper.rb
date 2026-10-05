@@ -15,4 +15,11 @@ module ClerkHelper
   def clerk_enabled?
     clerk_publishable_key.present?
   end
+
+  # The browser test loads a local fake instead of Clerk's CDN bundle.
+  def clerk_js_url
+    return "/test/clerk.js" if Rails.env.test?
+
+    "https://#{clerk_frontend_api}/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+  end
 end

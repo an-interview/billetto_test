@@ -18,6 +18,7 @@ authentication.
 
 - Ruby 3.4
 - PostgreSQL
+- Chrome (for the browser tests)
 - A Billetto API key pair — https://api.billetto.com
 - A Clerk application (secret + publishable keys) — https://dashboard.clerk.com
 
@@ -54,7 +55,7 @@ Stored in `.env` (git-ignored). See `.env.example`.
 bin/rails events:import LIMIT=50                      # ingest events
 bin/rails runner script/rebuild_event_vote_counts.rb  # rebuild vote counts from events
 bin/rails test                                        # unit + integration tests
-bin/rails test:system                                 # browser tests (SELENIUM=1 for real Chrome)
+bin/rails test:system                                 # browser tests (Chrome required)
 bin/ci                                                # full CI: style, security, tests
 ```
 
@@ -126,18 +127,22 @@ POST /events/:event_id/vote
     caps `limit` at 100).
   - Voting is append-only; there is no "one vote per user" toggle yet. Adding it
     would mean projecting each user's current vote into a read model.
-  - The Clerk sign-up / sign-in / sign-out UI is JavaScript driven; automated
-    browser tests cover the listing, vote controls, and the auth restriction, while
-    the interactive Clerk flow is verified manually.
+  - The Clerk sign-up / sign-in / sign-out UI is JavaScript driven. Browser
+    tests authenticate through a local fake Clerk component
+    (`test/support/fake_clerk.js`) and a test-only endpoint, so the full flow
+    (sign-up, sign-in, sign-out, voting and the auth restriction) runs in
+    headless Chrome. Collaborating with the real Clerk CDN still needs keys and
+    network, so that part is verified manually.
 
 ## Testing
 
 ```sh
 bin/rails test          # models, integration ACL, domain, read models, controllers
-bin/rails test:system   # Capybara (rack_test by default; SELENIUM=1 for headless Chrome)
+bin/rails test:system   # Capybara browser tests (headless Chrome required)
 ```
 
 Coverage includes: `Event` validations, the Billetto adapter and mapper,
 importing (including idempotency and validation), the command bus and handlers,
 Clerk auth restriction, voting (facts created, counts projected), and browser
-tests for the listing and the voting restriction.
+tests for the listing, the voting restriction and the full authentication flow
+(`test/system/auth_flow_test.rb`, Selenium + headless Chrome).

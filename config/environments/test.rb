@@ -5,6 +5,10 @@
 
 # Clerk's real middleware needs API keys and a network handshake; swap it for a
 # test double (see test/support/test_clerk_middleware.rb).
+# A dummy publishable key makes the layout load clerk-js; in test it points at
+# a local fake (see ClerkHelper#clerk_js_url and test/support/fake_clerk.js).
+ENV["CLERK_PUBLISHABLE_KEY"] ||= "pk_test_Y2xlcmsuZXhhbXBsZS5jb20k"
+
 ENV["CLERK_SKIP_RAILTIE"] = "1"
 require_relative "../../test/support/test_clerk_middleware"
 

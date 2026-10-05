@@ -12,7 +12,9 @@ class TestClerkMiddleware
   end
 
   def call(env)
-    user_id = env[USER_ID_HEADER]
+    # A request header works for integration tests; a session value is needed for
+    # browser tests, where navigating cannot set a custom header.
+    user_id = env[USER_ID_HEADER] || env["rack.session"]&.dig("test_clerk_user_id")
     env["clerk"] = Clerk::Proxy.new(session_claims: user_id ? { "sub" => user_id } : nil)
     @app.call(env)
   end

@@ -1,5 +1,13 @@
 Rails.application.routes.draw do
   mount RailsEventStore::Browser => "/res" if Rails.env.development?
+
+  # Test-only endpoints for the browser authentication-flow test.
+  if Rails.env.test?
+    require Rails.root.join("test/support/test_support_controller").to_s
+
+    post "/test/sign-in", to: TestSupportController.action(:create)
+    get "/test/clerk.js", to: TestSupportController.action(:clerk)
+  end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   resources :events, only: :index do
