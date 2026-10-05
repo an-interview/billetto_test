@@ -110,8 +110,8 @@ POST /events/:event_id/vote
 - **Database**: PostgreSQL (preferred over MySQL for this exercise).
 - **Ingestion**: the Billetto adapter returns raw payloads; `Billetto::EventMapper`
   translates them into `Event` attributes (anti-corruption). It tolerates both the
-  documented spelling (`organizer`) and the live API spelling (`organiser`, nested
-  `categorization.type`, `minimum_price`).
+  documented spelling (`organizer`) and the live API spelling (`organiser`,
+  nested `categorization.type`).
 - **Idempotent import**: events are upserted by `external_id`. A fact
   (`Events::EventImported`) is published only for new or changed events, so
   re-running the import does not create duplicate events or facts.
