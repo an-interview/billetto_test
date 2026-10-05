@@ -25,7 +25,7 @@ module Command
       method_name = self.class.command_handlers.fetch(command.class) do
         raise Command::Error, "#{self.class.name} cannot handle #{command.class.name}"
       end
-      public_send(method_name, command)
+      send(method_name, command)
     end
   end
 end

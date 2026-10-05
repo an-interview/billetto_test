@@ -3,15 +3,21 @@ class ApplicationSubscriptions
   class << self
     def handlers
       top_level_subscriptions
+        .merge(Events.subscriptions)
     end
 
     def top_level_subscriptions
       {}
     end
 
-    # Touching `handlers` forces autoloaded domain modules to load, so their
-    # commands and handlers self-register with Command.
+    def domain_modules
+      [ Events ]
+    end
+
+    # Loads domain modules so their commands and handlers self-register with
+    # Command before the bus is populated.
     def load!
+      domain_modules.each(&:load!)
       handlers
       self
     end

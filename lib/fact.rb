@@ -43,6 +43,14 @@ class Fact < RubyEventStore::Event
     raise NotDefined, "#{self.class.name} must define #stream_names"
   end
 
+  # Publishes to the first stream and links to the rest.
+  def publish(event_store = Rails.configuration.event_store)
+    streams = stream_names
+    event_store.publish(self, stream_name: streams.first)
+    streams.drop(1).each { |stream| event_store.link(event_id, stream_name: stream) }
+    self
+  end
+
   # Indifferent access, because JSON round-trips turn symbol keys into strings.
   def payload
     data.with_indifferent_access
