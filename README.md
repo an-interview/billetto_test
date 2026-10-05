@@ -118,12 +118,13 @@ POST /events/:event_id/vote
 - **Strict facts**: `Fact.strict` validates the payload against a `SCHEMA` and
   rejects unknown keys, keeping the event log clean.
 - **Event streams**: all facts about an event are published to the `Event$<id>`
-  stream, so a single event's history (import, votes) can be read together and
-  read models rebuilt from it.
+  stream, so a single event's history (import, votes) can be read together. Vote
+  facts are additionally linked into an `EventVotes` stream so the vote-count
+  read model can be rebuilt from one stream.
 - **Voting**: each vote is an `EventUpvoted` / `EventDownvoted` fact carrying the
   Clerk `user_id`. Votes are immutable facts rather than mutable rows.
 - **Counts**: maintained by an asynchronous read model; `script/rebuild_event_vote_counts.rb`
-  rebuilds them from the event store at any time. Applying is idempotent — each
+  rebuilds them by reading the `EventVotes` stream. Applying is idempotent — each
   fact is claimed in the `processed_events` ledger, so job retries or replays do
   not double count — and the counter update is a single atomic upsert, so
   concurrent first votes for an event cannot race on row creation.
