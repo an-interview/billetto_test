@@ -24,9 +24,10 @@ Rails.configuration.to_prepare do
     store.subscribe_to_all_events(RailsEventStore::LinkByCausationId.new)
   end
 
-  # Register command handlers below
-  # Rails.configuration.command_bus.tap do |bus|
-  #   bus.register(PrintInvoice, Invoicing::OnPrint.new)
-  #   bus.register(SubmitOrder, ->(cmd) { Ordering::OnSubmitOrder.new.call(cmd) })
-  # end
+  # Installs self-registered commands onto the bus and subscribes domain event
+  # handlers contributed by domain modules.
+  ApplicationSubscriptions.install(
+    event_store: Rails.configuration.event_store,
+    command_bus: Rails.configuration.command_bus
+  )
 end
