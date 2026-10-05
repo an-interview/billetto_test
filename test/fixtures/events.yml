@@ -1,0 +1,26 @@
+upcoming:
+  external_id: "bil-1001"
+  title: "Rails Meetup"
+  description: "Talks about Rails"
+  url: "https://billetto.example/e/1001"
+  image_url: "https://billetto.example/img/1001.png"
+  starts_at: 2026-09-01 18:00:00
+  ends_at: 2026-09-01 21:00:00
+  state: published
+  event_type: meetup
+  organizer_id: "42"
+  organizer_name: "Copenhagen Ruby"
+  venue: "Cafe"
+  city: "Copenhagen"
+  country_code: "DK"
+  availability: true
+
+past:
+  external_id: "bil-1002"
+  title: "Old Conference"
+  description: "Already happened"
+  starts_at: 2025-01-01 09:00:00
+  ends_at: 2025-01-01 17:00:00
+  state: published
+  organizer_name: "Past Events"
+  availability: false

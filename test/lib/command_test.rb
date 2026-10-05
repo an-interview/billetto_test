@@ -33,7 +33,7 @@ class CommandTest < ActiveSupport::TestCase
   end
 
   teardown do
-    Command.handlers.replace(@registry)
+    Command.handlers.replace(@registry) if @registry
   end
 
   test "executable command exposes attributes" do
