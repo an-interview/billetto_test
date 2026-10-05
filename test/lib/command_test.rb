@@ -49,14 +49,14 @@ class CommandTest < ActiveSupport::TestCase
   end
 
   test "install registers executable commands on the bus" do
-    bus = Arkency::CommandBus.new
+    bus = Command::Bus.new
     Command.install(bus)
 
     assert_equal "hello ada", bus.call(Greet.new(name: "ada"))
   end
 
   test "handles registers a command handler on the bus" do
-    bus = Arkency::CommandBus.new
+    bus = Command::Bus.new
     Command.install(bus)
 
     assert_equal "via service", bus.call(Record.new)

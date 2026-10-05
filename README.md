@@ -84,8 +84,16 @@ app/
       event_vote_counts.rb     # async read model of vote tallies
   integrations/billetto/  # ACL over the Billetto API (adapter, mapper, fake adapter)
   controllers/            # EventsController, VotesController, SessionsController
-lib/                      # command bus, Fact, ObjectRepository, Handler, subscriptions
+lib/                      # command bus + middleware, Fact, ObjectRepository, Handler, subscriptions
 ```
+
+Commands are dispatched through a middleware chain (`lib/command/bus.rb` +
+`lib/command/middleware/`): each command runs in a database transaction, emits
+an `ActiveSupport::Notifications` event (`command.executed`), and sets the
+correlation / causation ids for the events it publishes. A command dispatched
+from within an event handler inherits the handled event's correlation id and
+uses the event's id as causation id; a top-level command starts a new
+correlation id.
 
 Flow for a vote:
 
@@ -119,6 +127,10 @@ POST /events/:event_id/vote
 - **Authentication**: Clerk's Rack middleware validates the session and
   `Clerk::Authenticatable` exposes it. We read the user id from the session token
   claims instead of calling the Clerk API on every request.
+- **Command bus**: commands go through a chain of middleware (transaction,
+  instrumentation, causation/correlation ids) before reaching their handler, as
+  described in the developer guide. Async event handlers restore the causing
+  event's correlation / causation context when they run.
 - **Testing**: Minitest. The Billetto adapter is stubbed with a fake adapter in
   tests; Clerk is replaced with a test double that fabricates a session from a
   header (`X-Test-Clerk-User-Id`), so no keys or network are needed.

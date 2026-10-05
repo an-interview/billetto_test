@@ -1,10 +1,17 @@
 require "rails_event_store"
 require "aggregate_root"
-require "arkency/command_bus"
 
 Rails.configuration.to_prepare do
   Rails.configuration.event_store = RailsEventStore::JSONClient.new
-  Rails.configuration.command_bus = Arkency::CommandBus.new
+
+  # Command bus middleware (see lib/command/): run each command in a database
+  # transaction, publish instrumentation, and set up causation / correlation
+  # ids for the events the command publishes.
+  command_bus = Command::Bus.new
+  command_bus.use(Command::Middleware::Transaction.new)
+  command_bus.use(Command::Middleware::Instrumentation.new)
+  command_bus.use(Command::Middleware::Causation.new(event_store: Rails.configuration.event_store))
+  Rails.configuration.command_bus = command_bus
 
   # Use AggregateRoot::Repository with explicit event store injection, e.g.:
   #

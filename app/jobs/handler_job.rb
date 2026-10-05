@@ -4,6 +4,13 @@ class HandlerJob < ApplicationJob
     event = Rails.configuration.event_store.read.event(event_id)
     return if event.nil?
 
-    handler_class_name.constantize.new.call(event)
+    # Re-establish the causing event's correlation / causation context so events
+    # or commands dispatched by the handler stay on the same trail.
+    Rails.configuration.event_store.with_metadata(
+      correlation_id: event.metadata[:correlation_id],
+      causation_id: event.event_id
+    ) do
+      handler_class_name.constantize.new.call(event)
+    end
   end
 end

@@ -33,9 +33,21 @@ class HandlerTest < ActiveSupport::TestCase
     end
   end
 
+  class MetadataHandler
+    include Handler.async(queue: "low")
+    subscribes_to HandlerSampleFact
+
+    SEEN = []
+
+    def call(_fact)
+      SEEN << Rails.configuration.event_store.metadata.dup
+    end
+  end
+
   setup do
     SyncHandler::CALLS.clear
     AsyncHandler::CALLS.clear
+    MetadataHandler::SEEN.clear
   end
 
   test "sync handler subscriptions return the instance" do
@@ -66,5 +78,19 @@ class HandlerTest < ActiveSupport::TestCase
     perform_enqueued_jobs
 
     assert_equal [ 9 ], AsyncHandler::CALLS
+  end
+
+  test "the job re-establishes the causing event's correlation and causation" do
+    fact = HandlerSampleFact.strict(
+      data: { value: 1 },
+      metadata: { correlation_id: "corr-1" }
+    )
+    Rails.configuration.event_store.publish(fact, stream_name: "HandlerSample$1")
+
+    MetadataHandler.subscriptions.fetch(HandlerSampleFact).call(fact)
+    perform_enqueued_jobs
+
+    assert_equal "corr-1", MetadataHandler::SEEN.last[:correlation_id]
+    assert_equal fact.event_id, MetadataHandler::SEEN.last[:causation_id]
   end
 end
