@@ -9,17 +9,6 @@ require "application_system_test_case"
 class AuthFlowSystemTest < ApplicationSystemTestCase
   driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1400 ]
 
-  setup do
-    # Run the async vote read model inline so the count is projected within the
-    # vote request and visible on the next page load.
-    @queue_adapter = ActiveJob::Base.queue_adapter
-    ActiveJob::Base.queue_adapter = :inline
-  end
-
-  teardown do
-    ActiveJob::Base.queue_adapter = @queue_adapter
-  end
-
   test "sign up, vote, sign out, then voting is restricted again" do
     event = events(:upcoming)
 

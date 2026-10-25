@@ -12,15 +12,11 @@ class EventsController < ApplicationController
   private
 
   # Returns a hash of event id to +"up"+, +"down"+, or +nil+ for the signed-in
-  # user, or an empty hash for anonymous visitors.
+  # user, or an empty hash for anonymous visitors. One projection query serves
+  # the whole listing.
   def current_user_votes
     return {} unless authenticated?
 
-    @events.each_with_object({}) do |event, votes|
-      votes[event.id] = Events::VoteHistory.current_direction(
-        event_id: event.id,
-        user_id: current_user.id
-      )
-    end
+    ReadModels::CurrentVote.directions(event_ids: @events.map(&:id), user_id: current_user.id)
   end
 end

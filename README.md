@@ -83,9 +83,10 @@ app/
       cast_vote.rb             # command
       withdraw_vote.rb         # command
       vote_recorder.rb         # command handler (publishes vote facts)
-      vote_history.rb          # reads the current vote from an event stream
+      vote_direction.rb        # maps vote facts to "up" / "down"
     read_models/
-      event_vote_counts.rb     # async read model of vote tallies
+      event_vote_counts.rb     # sync projection of vote states and tallies
+      current_vote.rb          # queries the current-vote projection
   integrations/billetto.rb # Billetto ACL module + error classes
   integrations/billetto/   # adapter, http client, event mapper, fake adapter
   controllers/            # EventsController, VotesController, SessionsController
@@ -108,13 +109,14 @@ POST /events/:event_id/vote
   -> Events::VoteRecorder -> publishes Events::EventUpvoted or
      Events::EventDownvoted to stream "Event$<id>" (and links it into the
      "EventVotes" stream)
-  -> ReadModels::EventVoteCounts (async) updates event_vote_counts
+  -> ReadModels::EventVoteCounts (sync) updates event_vote_states and
+     event_vote_counts inside the command transaction
   -> listing shows "N up · N down · N total"
 
 DELETE /events/:event_id/vote
   -> VotesController (thin) -> command_bus.call(Events::WithdrawVote)
   -> Events::VoteRecorder -> publishes Events::EventVoteWithdrawn
-  -> ReadModels::EventVoteCounts (async) subtracts the removed vote
+  -> ReadModels::EventVoteCounts (sync) removes the state row and adjusts the tally
 ```
 
 ## Design choices and assumptions
@@ -140,15 +142,17 @@ DELETE /events/:event_id/vote
   moves the tally, and withdrawal records an `EventVoteWithdrawn` fact that
   subtracts the removed vote. Concurrent vote and withdrawal commands for the same
   (event, user) are serialized with a transaction advisory lock, so a double-click
-  cannot record two votes. The listing reads each event's stream to show the
-  signed-in user's active vote; at larger listing sizes this would become a
-  per-user projection.
-- **Counts**: maintained by an asynchronous read model; `script/rebuild_event_vote_counts.rb`
-  rebuilds them by reading the `EventVotes` stream. Applying is idempotent — each
-  fact is claimed in the `processed_events` ledger, so job retries or replays do
-  not double count — and the counter update is a single atomic upsert, so
-  concurrent first votes for an event cannot race on row creation. Withdrawal
-  facts are linked into the same stream, so rebuilds retain withdrawals.
+  cannot record two votes. The active vote is stored in the
+  `event_vote_states` projection with a unique `[event_id, user_id]` index, and the
+  listing reads that projection in one query for the signed-in user.
+- **Counts**: maintained by the same synchronous projection as the vote state;
+  `script/rebuild_event_vote_counts.rb` rebuilds both tables by reading the
+  `EventVotes` stream. Applying is idempotent — each fact is claimed in the
+  `processed_events` ledger, so retries or replays do not double count — and the
+  counter update is a single atomic upsert. State and tally update inside the
+  voting command's transaction, so a committed vote is immediately reflected in
+  both. Withdrawal facts are linked into the same stream, so rebuilds retain
+  withdrawals.
 - **Authentication**: Clerk's Rack middleware validates the session and
   `Clerk::Authenticatable` exposes it. We read the user id from the session token
   claims instead of calling the Clerk API on every request. Sign out is a real
@@ -166,8 +170,8 @@ DELETE /events/:event_id/vote
   - A single Billetto organisation's public events. The adapter follows the
     API's `has_more` / `next_url` cursor, so an import fetches every page;
     `limit` is the page size (the API caps it at 100).
-  - Vote counts are eventually consistent: the read model runs asynchronously,
-    so the listing may trail the latest vote by a moment.
+  - The vote-state projection assumes fresh data. Existing append-only votes from
+    before the one-active-vote change are not backfilled or collapsed.
   - The Clerk sign-up / sign-in / sign-out UI is JavaScript driven. Browser
     tests authenticate through a local fake Clerk component
     (`test/support/fake_clerk.js`) and a test-only endpoint, so the full flow
@@ -184,7 +188,8 @@ bin/rails test:system   # Capybara browser tests (headless Chrome required)
 
 Coverage includes: `Event` validations, the Billetto adapter and mapper,
 importing (including idempotency and validation), the command bus and handlers,
-Clerk auth restriction, voting (facts created, switching, withdrawal, counts
-projected), current-vote lookup, and browser tests for the listing, the voting
-restriction and the full authentication flow (`test/system/auth_flow_test.rb`,
-Selenium + headless Chrome).
+Clerk auth restriction, voting (facts created, switching, withdrawal, state and
+counts projected), current-vote batch lookup, concurrency for vote and
+withdrawal, and browser tests for the listing, the voting restriction and the
+full authentication flow (`test/system/auth_flow_test.rb`, Selenium + headless
+Chrome).

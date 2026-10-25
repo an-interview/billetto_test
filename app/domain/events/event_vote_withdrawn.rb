@@ -3,7 +3,7 @@ module Events
   #
   # The fact records the direction that was active so the vote-count projection
   # can subtract from the correct tally. Withdrawn votes remain in the event log;
-  # the active vote is derived from the latest vote fact in the event's stream.
+  # the active vote is stored in the ReadModels::EventVoteCounts state projection.
   class EventVoteWithdrawn < Fact
     SCHEMA = { event_id: Integer, user_id: String, previous_direction: String }.freeze
 

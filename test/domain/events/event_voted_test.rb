@@ -16,7 +16,8 @@ class Events::EventVotedTest < ActiveSupport::TestCase
   end
 
   test "links vote facts into the votes stream" do
-    fact = Events::EventUpvoted.strict(data: { event_id: 7, user_id: "user_1" })
+    event = events(:upcoming)
+    fact = Events::EventUpvoted.strict(data: { event_id: event.id, user_id: "user_1" })
     fact.publish
 
     linked = Rails.configuration.event_store.read.stream(Events::VOTES_STREAM).map(&:event_id)
@@ -48,8 +49,9 @@ class Events::EventVotedTest < ActiveSupport::TestCase
   end
 
   test "links withdrawal facts into the votes stream" do
+    event = events(:upcoming)
     fact = Events::EventVoteWithdrawn.strict(
-      data: { event_id: 7, user_id: "user_1", previous_direction: "down" }
+      data: { event_id: event.id, user_id: "user_1", previous_direction: "down" }
     )
     fact.publish
 

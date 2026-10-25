@@ -17,6 +17,8 @@ class Events::VoteRecorderConcurrencyTest < ActiveSupport::TestCase
   end
 
   def teardown
+    ReadModels::EventVoteCounts::State.where(event_id: @event.id).delete_all
+    ReadModels::EventVoteCounts::Count.where(event_id: @event.id).delete_all
     remove_facts
     Event.where(id: @event.id).delete_all
     clear_enqueued_jobs
@@ -37,14 +39,55 @@ class Events::VoteRecorderConcurrencyTest < ActiveSupport::TestCase
     end
     threads.each(&:join)
 
-    votes = Rails.configuration.event_store.read.stream(@stream).to_a
-      .select { |fact| fact.event_type == "Events::EventUpvoted" }
-
+    votes = votes_for(@event)
     assert_equal 1, votes.size
     assert_equal @user_id, votes.first.payload.fetch(:user_id)
   end
 
+  test "a vote and a withdrawal racing leave one consistent outcome" do
+    barrier = Concurrent::CyclicBarrier.new(2)
+
+    threads = [
+      Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          barrier.wait
+          Rails.configuration.command_bus.call(
+            Events::CastVote.new(tid: @event.tid, user_id: @user_id, direction: "up")
+          )
+        end
+      end,
+      Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          barrier.wait
+          Rails.configuration.command_bus.call(
+            Events::WithdrawVote.new(tid: @event.tid, user_id: @user_id)
+          )
+        end
+      end
+    ]
+    threads.each(&:join)
+
+    state = ReadModels::EventVoteCounts::State.find_by(event_id: @event.id, user_id: @user_id)
+    count = ReadModels::EventVoteCounts::Count.find_by(event_id: @event.id)
+
+    assert_equal 1, votes_for(@event).size
+
+    if state
+      assert_equal "up", state.direction
+      assert_equal 1, count.upvotes
+      assert_equal 0, count.downvotes
+    else
+      assert_equal 0, count.upvotes
+      assert_equal 0, count.downvotes
+    end
+  end
+
   private
+
+  def votes_for(event)
+    Rails.configuration.event_store.read.stream("Event$#{event.id}").to_a
+      .select { |fact| fact.event_type == "Events::EventUpvoted" }
+  end
 
   def remove_facts
     connection = ApplicationRecord.connection
@@ -54,6 +97,10 @@ class Events::VoteRecorderConcurrencyTest < ActiveSupport::TestCase
       )
     )
     return if event_ids.empty?
+
+    ProcessedEvent
+      .where(handler: ReadModels::EventVoteCounts.name, event_id: event_ids)
+      .delete_all
 
     connection.execute(
       ApplicationRecord.sanitize_sql_array(

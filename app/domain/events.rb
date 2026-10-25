@@ -16,13 +16,13 @@ module Events
       ImportPublicEvents,
       Importer,
       EventImported,
-      CastVote,
-      WithdrawVote,
-      VoteRecorder,
-      VoteHistory,
       EventUpvoted,
       EventDownvoted,
-      EventVoteWithdrawn
+      EventVoteWithdrawn,
+      VoteDirection,
+      CastVote,
+      WithdrawVote,
+      VoteRecorder
     ]
     self
   end

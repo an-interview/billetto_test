@@ -8,10 +8,11 @@ module Events
   # - the opposite direction records a new fact carrying +previous_direction+;
   # - +WithdrawVote+ records an +EventVoteWithdrawn+ fact when a vote exists.
   #
-  # Votes are immutable facts. The active vote is derived from the latest vote
-  # fact in the event's stream (see VoteHistory). Concurrent commands for the
-  # same event and user are serialized with a transaction advisory lock, so the
-  # second command sees the first command's committed vote instead of racing it.
+  # Votes are immutable facts. The active vote is read from the
+  # ReadModels::CurrentVote projection, which is updated synchronously when a vote
+  # fact is published. Concurrent commands for the same event and user are
+  # serialized with a transaction advisory lock, so the second command sees the
+  # first command's committed vote instead of racing it.
   class VoteRecorder
     include Command::Handler
 
@@ -31,7 +32,7 @@ module Events
 
       ApplicationRecord.transaction do
         lock_votes(event, command.user_id)
-        current = VoteHistory.current_direction(event_id: event.id, user_id: command.user_id)
+        current = ReadModels::CurrentVote.direction(event_id: event.id, user_id: command.user_id)
         next if current == command.direction
 
         publish(command, event, previous_direction: current)
@@ -49,7 +50,7 @@ module Events
 
       ApplicationRecord.transaction do
         lock_votes(event, command.user_id)
-        current = VoteHistory.current_direction(event_id: event.id, user_id: command.user_id)
+        current = ReadModels::CurrentVote.direction(event_id: event.id, user_id: command.user_id)
         next unless current
 
         EventVoteWithdrawn

@@ -137,7 +137,7 @@ class Events::VoteRecorderTest < ActiveSupport::TestCase
     withdrawal = facts_for(event).last
     assert_equal "Events::EventVoteWithdrawn", withdrawal.event_type
     assert_equal "user_1", withdrawal.payload.fetch(:user_id)
-    assert_equal "down", Events::VoteHistory.current_direction(event_id: event.id, user_id: "user_2")
+    assert_equal "down", ReadModels::CurrentVote.direction(event_id: event.id, user_id: "user_2")
   end
 
   test "rejects an unknown event tid" do

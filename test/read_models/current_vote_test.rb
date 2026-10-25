@@ -1,6 +1,6 @@
 require "test_helper"
 
-class Events::VoteHistoryTest < ActiveSupport::TestCase
+class ReadModels::CurrentVoteTest < ActiveSupport::TestCase
   def upvote(event, user_id: "user_1")
     Events::EventUpvoted.strict(data: { event_id: event.id, user_id: user_id })
   end
@@ -17,22 +17,22 @@ class Events::VoteHistoryTest < ActiveSupport::TestCase
     )
   end
 
-  def current_direction(event, user_id: "user_1")
-    Events::VoteHistory.current_direction(event_id: event.id, user_id: user_id)
+  def direction(event, user_id: "user_1")
+    ReadModels::CurrentVote.direction(event_id: event.id, user_id: user_id)
   end
 
   test "returns nil when the user has no vote" do
-    assert_nil current_direction(events(:upcoming))
+    assert_nil direction(events(:upcoming))
   end
 
   test "returns the latest vote direction" do
     event = events(:upcoming)
 
     upvote(event).publish
-    assert_equal "up", current_direction(event)
+    assert_equal "up", direction(event)
 
     downvote(event).publish
-    assert_equal "down", current_direction(event)
+    assert_equal "down", direction(event)
   end
 
   test "returns nil after a withdrawal" do
@@ -41,7 +41,7 @@ class Events::VoteHistoryTest < ActiveSupport::TestCase
     upvote(event).publish
     withdrawal(event).publish
 
-    assert_nil current_direction(event)
+    assert_nil direction(event)
   end
 
   test "ignores other users' votes" do
@@ -50,7 +50,22 @@ class Events::VoteHistoryTest < ActiveSupport::TestCase
     upvote(event, user_id: "user_1").publish
     downvote(event, user_id: "user_2").publish
 
-    assert_equal "up", current_direction(event, user_id: "user_1")
-    assert_equal "down", current_direction(event, user_id: "user_2")
+    assert_equal "up", direction(event, user_id: "user_1")
+    assert_equal "down", direction(event, user_id: "user_2")
+  end
+
+  test "returns directions for a batch of events" do
+    upcoming = events(:upcoming)
+    past = events(:past)
+
+    upvote(upcoming, user_id: "user_1").publish
+    downvote(past, user_id: "user_1").publish
+
+    directions = ReadModels::CurrentVote.directions(
+      event_ids: [ upcoming.id, past.id ],
+      user_id: "user_1"
+    )
+
+    assert_equal({ upcoming.id => "up", past.id => "down" }, directions)
   end
 end

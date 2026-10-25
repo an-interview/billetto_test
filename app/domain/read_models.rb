@@ -3,7 +3,7 @@
 module ReadModels
   # Referenced so Zeitwerk loads the classes and their `subscribes_to` runs.
   def self.load!
-    [ EventVoteCounts ]
+    [ EventVoteCounts, CurrentVote ]
     self
   end
 

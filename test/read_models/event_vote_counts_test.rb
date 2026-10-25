@@ -1,8 +1,6 @@
 require "test_helper"
 
 class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
-  include ActiveJob::TestHelper
-
   def upvote(event, user_id: "u", previous: nil)
     Events::EventUpvoted.strict(
       data: { event_id: event.id, user_id: user_id, previous_direction: previous }
@@ -23,6 +21,10 @@ class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
 
   def count_for(event)
     ReadModels::EventVoteCounts::Count.find_by(event_id: event.id)
+  end
+
+  def state_for(event, user_id: "u")
+    ReadModels::EventVoteCounts::State.find_by(event_id: event.id, user_id: user_id)
   end
 
   test "counts upvotes and downvotes" do
@@ -73,35 +75,37 @@ class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
     assert_equal 0, count_for(event).downvotes
   end
 
-  test "switching a vote moves the tally to the new direction" do
+  test "stores one state row per user and event" do
+    event = events(:upcoming)
+    handler = ReadModels::EventVoteCounts.new
+
+    handler.call(upvote(event, user_id: "user_1"))
+    handler.call(upvote(event, user_id: "user_1", previous: "up"))
+
+    assert_equal 1, ReadModels::EventVoteCounts::State.where(event_id: event.id, user_id: "user_1").count
+    assert_equal "up", state_for(event, user_id: "user_1").direction
+  end
+
+  test "switching a vote moves the state row and the tally" do
     event = events(:upcoming)
     handler = ReadModels::EventVoteCounts.new
 
     handler.call(upvote(event, user_id: "user_1"))
     handler.call(downvote(event, user_id: "user_1", previous: "up"))
 
+    assert_equal "down", state_for(event, user_id: "user_1").direction
     assert_equal 0, count_for(event).upvotes
     assert_equal 1, count_for(event).downvotes
   end
 
-  test "switch deltas are independent of application order" do
-    event = events(:upcoming)
-    handler = ReadModels::EventVoteCounts.new
-
-    handler.call(downvote(event, user_id: "user_1", previous: "up"))
-    handler.call(upvote(event, user_id: "user_1"))
-
-    assert_equal 0, count_for(event).upvotes
-    assert_equal 1, count_for(event).downvotes
-  end
-
-  test "withdrawal removes an upvote from the tally" do
+  test "withdrawal removes the state row and the tally" do
     event = events(:upcoming)
     handler = ReadModels::EventVoteCounts.new
 
     handler.call(upvote(event, user_id: "user_1"))
     handler.call(withdrawal(event, user_id: "user_1", previous: "up"))
 
+    assert_nil state_for(event, user_id: "user_1")
     assert_equal 0, count_for(event).upvotes
     assert_equal 0, count_for(event).downvotes
   end
@@ -113,6 +117,7 @@ class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
     handler.call(downvote(event, user_id: "user_1"))
     handler.call(withdrawal(event, user_id: "user_1", previous: "down"))
 
+    assert_nil state_for(event, user_id: "user_1")
     assert_equal 0, count_for(event).upvotes
     assert_equal 0, count_for(event).downvotes
   end
@@ -142,22 +147,20 @@ class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
     assert_equal 0, count_for(event).downvotes
   end
 
-  test "withdrawal deltas are independent of application order" do
+  test "withdrawal without an active vote does not change the tally" do
     event = events(:upcoming)
     handler = ReadModels::EventVoteCounts.new
 
     handler.call(withdrawal(event, user_id: "user_1", previous: "up"))
-    handler.call(upvote(event, user_id: "user_1"))
 
-    assert_equal 0, count_for(event).upvotes
-    assert_equal 0, count_for(event).downvotes
+    assert_nil state_for(event, user_id: "user_1")
+    assert_nil count_for(event)
   end
 
   test "is subscribed to the vote facts" do
     event = events(:upcoming)
 
     upvote(event).publish
-    perform_enqueued_jobs
 
     assert_equal 1, count_for(event).upvotes
   end
@@ -167,7 +170,6 @@ class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
 
     upvote(event).publish
     withdrawal(event, previous: "up").publish
-    perform_enqueued_jobs
 
     assert_equal 0, count_for(event).upvotes
     assert_equal 0, count_for(event).downvotes
