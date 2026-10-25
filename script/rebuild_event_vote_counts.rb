@@ -1,7 +1,7 @@
 # Rebuilds the EventVoteCounts read model from the event store.
 #
-# All vote facts are linked into Events::VOTES_STREAM, so a single stream read
-# gives the facts the read model is built from.
+# All vote facts, including withdrawals, are linked into Events::VOTES_STREAM,
+# so a single stream read gives the facts the read model is built from.
 #
 # Run with: bin/rails runner script/rebuild_event_vote_counts.rb
 counts = ReadModels::EventVoteCounts.new

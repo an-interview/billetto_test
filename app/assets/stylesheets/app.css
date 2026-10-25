@@ -184,6 +184,7 @@ body {
 
 .event__votes {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
@@ -210,4 +211,20 @@ body {
 .vote-button:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.vote-button--active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.vote-button--active:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.vote-button--withdraw {
+  border-style: dashed;
+  color: var(--muted);
 }

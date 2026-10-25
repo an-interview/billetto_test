@@ -15,6 +15,12 @@ class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
     )
   end
 
+  def withdrawal(event, user_id: "u", previous: "up")
+    Events::EventVoteWithdrawn.strict(
+      data: { event_id: event.id, user_id: user_id, previous_direction: previous }
+    )
+  end
+
   def count_for(event)
     ReadModels::EventVoteCounts::Count.find_by(event_id: event.id)
   end
@@ -23,9 +29,9 @@ class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
     event = events(:upcoming)
     handler = ReadModels::EventVoteCounts.new
 
-    handler.call(upvote(event))
-    handler.call(upvote(event))
-    handler.call(downvote(event))
+    handler.call(upvote(event, user_id: "a"))
+    handler.call(upvote(event, user_id: "b"))
+    handler.call(downvote(event, user_id: "c"))
 
     assert_equal 2, count_for(event).upvotes
     assert_equal 1, count_for(event).downvotes
@@ -89,6 +95,64 @@ class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
     assert_equal 1, count_for(event).downvotes
   end
 
+  test "withdrawal removes an upvote from the tally" do
+    event = events(:upcoming)
+    handler = ReadModels::EventVoteCounts.new
+
+    handler.call(upvote(event, user_id: "user_1"))
+    handler.call(withdrawal(event, user_id: "user_1", previous: "up"))
+
+    assert_equal 0, count_for(event).upvotes
+    assert_equal 0, count_for(event).downvotes
+  end
+
+  test "withdrawal removes a downvote from the tally" do
+    event = events(:upcoming)
+    handler = ReadModels::EventVoteCounts.new
+
+    handler.call(downvote(event, user_id: "user_1"))
+    handler.call(withdrawal(event, user_id: "user_1", previous: "down"))
+
+    assert_equal 0, count_for(event).upvotes
+    assert_equal 0, count_for(event).downvotes
+  end
+
+  test "withdrawal after a switch leaves both tallies at zero" do
+    event = events(:upcoming)
+    handler = ReadModels::EventVoteCounts.new
+
+    handler.call(upvote(event, user_id: "user_1"))
+    handler.call(downvote(event, user_id: "user_1", previous: "up"))
+    handler.call(withdrawal(event, user_id: "user_1", previous: "down"))
+
+    assert_equal 0, count_for(event).upvotes
+    assert_equal 0, count_for(event).downvotes
+  end
+
+  test "withdrawal is idempotent when the same fact is applied twice" do
+    event = events(:upcoming)
+    handler = ReadModels::EventVoteCounts.new
+    fact = withdrawal(event, user_id: "user_1", previous: "up")
+
+    handler.call(upvote(event, user_id: "user_1"))
+    handler.call(fact)
+    handler.call(fact)
+
+    assert_equal 0, count_for(event).upvotes
+    assert_equal 0, count_for(event).downvotes
+  end
+
+  test "withdrawal deltas are independent of application order" do
+    event = events(:upcoming)
+    handler = ReadModels::EventVoteCounts.new
+
+    handler.call(withdrawal(event, user_id: "user_1", previous: "up"))
+    handler.call(upvote(event, user_id: "user_1"))
+
+    assert_equal 0, count_for(event).upvotes
+    assert_equal 0, count_for(event).downvotes
+  end
+
   test "is subscribed to the vote facts" do
     event = events(:upcoming)
 
@@ -96,5 +160,16 @@ class ReadModels::EventVoteCountsTest < ActiveSupport::TestCase
     perform_enqueued_jobs
 
     assert_equal 1, count_for(event).upvotes
+  end
+
+  test "is subscribed to withdrawal facts" do
+    event = events(:upcoming)
+
+    upvote(event).publish
+    withdrawal(event, previous: "up").publish
+    perform_enqueued_jobs
+
+    assert_equal 0, count_for(event).upvotes
+    assert_equal 0, count_for(event).downvotes
   end
 end

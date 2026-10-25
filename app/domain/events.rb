@@ -17,9 +17,12 @@ module Events
       Importer,
       EventImported,
       CastVote,
+      WithdrawVote,
       VoteRecorder,
+      VoteHistory,
       EventUpvoted,
-      EventDownvoted
+      EventDownvoted,
+      EventVoteWithdrawn
     ]
     self
   end

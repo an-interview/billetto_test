@@ -7,6 +7,7 @@ class EventsVotingTest < ApplicationSystemTestCase
     assert_text "Rails Meetup"
     assert_button "▲ Upvote"
     assert_button "▼ Downvote"
+    assert_no_button "Withdraw vote"
   end
 
   test "voting is restricted to signed-in users" do

@@ -59,4 +59,24 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
 
     assert_match(/0 total/, response.body)
   end
+
+  test "shows the signed-in user's active vote and withdrawal control" do
+    event = events(:upcoming)
+    Events::VoteRecorder.new.call(
+      Events::CastVote.new(tid: event.tid, user_id: "user_1", direction: "up")
+    )
+
+    get events_url, headers: { "X-Test-Clerk-User-Id" => "user_1" }
+
+    assert_response :success
+    assert_select "#event_#{event.id} .vote-button--active", text: "▲ Upvote"
+    assert_select "#event_#{event.id}", text: /Withdraw vote/
+  end
+
+  test "does not show withdrawal controls to anonymous visitors" do
+    get events_url
+
+    assert_response :success
+    assert_select ".vote-button--withdraw", count: 0
+  end
 end

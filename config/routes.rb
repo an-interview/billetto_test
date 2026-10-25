@@ -11,7 +11,7 @@ Rails.application.routes.draw do
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   resources :events, only: :index do
-    resource :vote, only: :create
+    resource :vote, only: %i[create destroy]
   end
 
   get "sign-in", to: "sessions#sign_in", as: :sign_in

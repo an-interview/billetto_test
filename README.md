@@ -10,7 +10,7 @@ authentication.
 - Fetch and ingest public events from the Billetto API with error handling and validation.
 - List events (title, date, image, description, organizer, venue).
 - Authenticate users with Clerk (sign-up, sign-in, sign-out).
-- Upvote / downvote events. Only authenticated users can vote.
+- Upvote / downvote events, switch the active vote, or withdraw it. Only authenticated users can vote.
 - Record votes in Rails Event Store with the voter's user id.
 - Show vote totals per event via an asynchronous read model that can be rebuilt from events.
 
@@ -77,10 +77,13 @@ app/
       event_imported.rb   # facts
       event_upvoted.rb
       event_downvoted.rb
+      event_vote_withdrawn.rb
       import_public_events.rb  # command
       importer.rb              # command handler (Billetto -> Event records)
       cast_vote.rb             # command
+      withdraw_vote.rb         # command
       vote_recorder.rb         # command handler (publishes vote facts)
+      vote_history.rb          # reads the current vote from an event stream
     read_models/
       event_vote_counts.rb     # async read model of vote tallies
   integrations/billetto.rb # Billetto ACL module + error classes
@@ -102,10 +105,16 @@ Flow for a vote:
 ```
 POST /events/:event_id/vote
   -> VotesController (thin) -> command_bus.call(Events::CastVote)
-  -> Events::VoteRecorder -> publishes Events::EventUpvoted to stream "Event$<id>"
-     (and links it into the "EventVotes" stream)
+  -> Events::VoteRecorder -> publishes Events::EventUpvoted or
+     Events::EventDownvoted to stream "Event$<id>" (and links it into the
+     "EventVotes" stream)
   -> ReadModels::EventVoteCounts (async) updates event_vote_counts
   -> listing shows "N up · N down · N total"
+
+DELETE /events/:event_id/vote
+  -> VotesController (thin) -> command_bus.call(Events::WithdrawVote)
+  -> Events::VoteRecorder -> publishes Events::EventVoteWithdrawn
+  -> ReadModels::EventVoteCounts (async) subtracts the removed vote
 ```
 
 ## Design choices and assumptions
@@ -127,14 +136,19 @@ POST /events/:event_id/vote
 - **Voting**: each vote is an `EventUpvoted` / `EventDownvoted` fact carrying the
   Clerk `user_id` and the direction it replaced. Votes are immutable facts rather
   than mutable rows. Each user has at most one active vote per event: repeating a
-  direction records nothing, and switching records a fact whose `previous_direction`
-  moves the tally. Concurrent votes for the same (event, user) are serialized with
-  a transaction advisory lock, so a double-click cannot record two votes.
+  direction records nothing, switching records a fact whose `previous_direction`
+  moves the tally, and withdrawal records an `EventVoteWithdrawn` fact that
+  subtracts the removed vote. Concurrent vote and withdrawal commands for the same
+  (event, user) are serialized with a transaction advisory lock, so a double-click
+  cannot record two votes. The listing reads each event's stream to show the
+  signed-in user's active vote; at larger listing sizes this would become a
+  per-user projection.
 - **Counts**: maintained by an asynchronous read model; `script/rebuild_event_vote_counts.rb`
   rebuilds them by reading the `EventVotes` stream. Applying is idempotent — each
   fact is claimed in the `processed_events` ledger, so job retries or replays do
   not double count — and the counter update is a single atomic upsert, so
-  concurrent first votes for an event cannot race on row creation.
+  concurrent first votes for an event cannot race on row creation. Withdrawal
+  facts are linked into the same stream, so rebuilds retain withdrawals.
 - **Authentication**: Clerk's Rack middleware validates the session and
   `Clerk::Authenticatable` exposes it. We read the user id from the session token
   claims instead of calling the Clerk API on every request. Sign out is a real
@@ -170,6 +184,7 @@ bin/rails test:system   # Capybara browser tests (headless Chrome required)
 
 Coverage includes: `Event` validations, the Billetto adapter and mapper,
 importing (including idempotency and validation), the command bus and handlers,
-Clerk auth restriction, voting (facts created, counts projected), and browser
-tests for the listing, the voting restriction and the full authentication flow
-(`test/system/auth_flow_test.rb`, Selenium + headless Chrome).
+Clerk auth restriction, voting (facts created, switching, withdrawal, counts
+projected), current-vote lookup, and browser tests for the listing, the voting
+restriction and the full authentication flow (`test/system/auth_flow_test.rb`,
+Selenium + headless Chrome).

@@ -1,20 +1,21 @@
 module ReadModels
-  # Keeps per-event up/down vote tallies, built from EventUpvoted /
-  # EventDownvoted facts.
+  # Keeps per-event up/down vote tallies, built from +EventUpvoted+,
+  # +EventDownvoted+, and +EventVoteWithdrawn+ facts.
   #
-  # Each fact carries the direction it replaced (nil for a user's first vote),
-  # so the tally is adjusted by a delta: a first vote adds one, and a switch
-  # moves one from the old column to the new one. Deltas depend only on the
-  # fact's own previous/next directions, so applying facts in any order yields
-  # the same tally.
+  # Each vote fact carries the direction it replaced (+nil+ for a user's first
+  # vote), so the tally is adjusted by a delta: a first vote adds one, a switch
+  # moves one from the old column to the new one, and a withdrawal subtracts one
+  # from the removed direction. Deltas depend only on each fact's own previous
+  # and next directions, so applying facts in any order yields the same final
+  # tally.
   #
-  # Applying is idempotent: each fact is claimed in `processed_events`, so a
+  # Applying is idempotent: each fact is claimed in +processed_events+, so a
   # retried or replayed job does not double count. The counter update is a single
   # atomic upsert, so concurrent first votes for the same event cannot race on
   # row creation.
   class EventVoteCounts
     include Handler.async(queue: "low")
-    subscribes_to Events::EventUpvoted, Events::EventDownvoted
+    subscribes_to Events::EventUpvoted, Events::EventDownvoted, Events::EventVoteWithdrawn
 
     class Count < ApplicationRecord
       self.table_name = "event_vote_counts"
@@ -44,6 +45,10 @@ module ReadModels
       inserted.rows.any?
     end
 
+    # Applies one fact's delta to the event's tally.
+    #
+    # A vote has a direction of +"up"+ or +"down"+. A withdrawal has no
+    # direction, so it only subtracts the previous direction.
     def apply(fact)
       direction = direction_for(fact)
       previous = fact.payload[:previous_direction]
@@ -57,8 +62,12 @@ module ReadModels
       adjust(fact.payload.fetch(:event_id), up: up, down: down)
     end
 
+    # Returns +"up"+, +"down"+, or +nil+ for a withdrawal or unknown fact.
     def direction_for(fact)
-      fact.event_type == Events::EventUpvoted.name ? "up" : "down"
+      case fact.event_type
+      when Events::EventUpvoted.name then "up"
+      when Events::EventDownvoted.name then "down"
+      end
     end
 
     def adjust(event_id, up:, down:)

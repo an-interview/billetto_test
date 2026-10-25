@@ -35,6 +35,7 @@
             <% end %>
 
             <% counts = @vote_counts[event.id] %>
+            <% current_vote = @user_votes[event.id] %>
             <p class="event__score">
               <%= event_upvotes(counts) %> up · <%= event_downvotes(counts) %> down ·
               <%= event_total_votes(counts) %> total
@@ -43,10 +44,17 @@
             <div class="event__votes">
               <%= button_to "▲ Upvote", event_vote_path(event),
                     params: { direction: "up" },
-                    class: "vote-button" %>
+                    class: class_names("vote-button", "vote-button--active": current_vote == "up"),
+                    aria: { pressed: current_vote == "up" } %>
               <%= button_to "▼ Downvote", event_vote_path(event),
                     params: { direction: "down" },
-                    class: "vote-button" %>
+                    class: class_names("vote-button", "vote-button--active": current_vote == "down"),
+                    aria: { pressed: current_vote == "down" } %>
+              <% if current_vote %>
+                <%= button_to "Withdraw vote", event_vote_path(event),
+                      method: :delete,
+                      class: "vote-button vote-button--withdraw" %>
+              <% end %>
             </div>
           </div>
         </li>

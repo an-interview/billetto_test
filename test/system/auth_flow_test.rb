@@ -34,7 +34,14 @@ class AuthFlowSystemTest < ApplicationSystemTestCase
       click_button "▲ Upvote"
     end
 
-    assert_text "1 total"
+    within "#event_#{event.id}" do
+      assert_text "1 total"
+      click_button "Withdraw vote"
+    end
+
+    within "#event_#{event.id}" do
+      assert_text "0 total"
+    end
 
     click_button "Sign out"
 
