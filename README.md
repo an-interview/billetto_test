@@ -160,7 +160,10 @@ DELETE /events/:event_id/vote
   revokes the Clerk session when clerk-js is present. Sign-in and sign-up widgets
   are mounted by the `clerk-auth` Stimulus controller, so they render on both
   initial loads and Turbo navigation instead of depending on the window `load`
-  event.
+  event. The controller passes Clerk an absolute `fallbackRedirectUrl` and also
+  redirects when Clerk reports a signed-in user, so a completed sign-in does not
+  depend on the widget's own navigation. The test fake honors the same redirect
+  option instead of relying only on the test sign-in endpoint's server redirect.
 - **Command bus**: commands go through a chain of middleware (transaction,
   instrumentation, causation/correlation ids) before reaching their handler, as
   described in the developer guide. Async event handlers restore the causing
@@ -193,6 +196,6 @@ Coverage includes: `Event` validations, the Billetto adapter and mapper,
 importing (including idempotency and validation), the command bus and handlers,
 Clerk auth restriction, voting (facts created, switching, withdrawal, state and
 counts projected), current-vote batch lookup, concurrency for vote and
-withdrawal, and browser tests for the listing, the voting restriction and the
-full authentication flow (`test/system/auth_flow_test.rb`, Selenium + headless
-Chrome).
+withdrawal, and browser tests for the listing, Clerk widget mounting, client-side
+sign-in/sign-up redirects, the voting restriction and the full authentication flow
+(`test/system/auth_flow_test.rb`, Selenium + headless Chrome).

@@ -27,6 +27,45 @@ class AuthFlowSystemTest < ApplicationSystemTestCase
     assert_field "user_id"
   end
 
+  test "sign-in redirects home after client-side sign-in" do
+    visit root_path
+    click_link "Sign in"
+
+    fill_in "user_id", with: "user_redirect"
+    click_button "Sign in"
+
+    assert_current_path root_path
+    assert_text "user_redirect"
+  end
+
+  test "sign-up redirects home after client-side sign-up" do
+    visit root_path
+    click_link "Sign up"
+
+    fill_in "user_id", with: "user_signup_redirect"
+    click_button "Create account"
+
+    assert_current_path root_path
+    assert_text "user_signup_redirect"
+  end
+
+  test "passes an absolute fallback redirect URL to Clerk" do
+    visit sign_in_path
+    assert_selector "#clerk-sign-in form"
+
+    redirect_url = page.evaluate_script("window.Clerk.lastMountOptions.fallbackRedirectUrl")
+    assert_equal root_url, redirect_url
+  end
+
+  test "redirects when Clerk reports a signed-in user" do
+    visit sign_in_path
+    assert_selector "#clerk-sign-in form"
+
+    page.execute_script("window.Clerk.user = { id: 'listener_user' }; window.Clerk.notify();")
+
+    assert_current_path root_path
+  end
+
   test "sign up, vote, sign out, then voting is restricted again" do
     event = events(:upcoming)
 
