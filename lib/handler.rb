@@ -11,8 +11,16 @@ module Handler
       @queue = queue
     end
 
+    # Dispatch happens while the publishing command's transaction is still open
+    # (the event store notifies subscribers synchronously during publish).
+    # Enqueue only once that transaction commits, otherwise an in-process worker
+    # can run on another connection and read the fact before it is committed —
+    # seeing nothing. `current_transaction.after_commit` runs the block at once
+    # when there is no open transaction.
     def call(fact)
-      HandlerJob.set(queue: @queue).perform_later(@handler_class.name, fact.event_id)
+      ApplicationRecord.current_transaction.after_commit do
+        HandlerJob.set(queue: @queue).perform_later(@handler_class.name, fact.event_id)
+      end
     end
   end
 
