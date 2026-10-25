@@ -156,11 +156,15 @@ DELETE /events/:event_id/vote
 - **Authentication**: Clerk's Rack middleware validates the session and
   `Clerk::Authenticatable` exposes it. We read the user id from the session token
   claims instead of calling the Clerk API on every request. Sign out is a real
-  `DELETE /sign-out` form, progressively enhanced by a Stimulus controller that
-  revokes the Clerk session when clerk-js is present. Sign-in and sign-up widgets
-  are mounted by the `clerk-auth` Stimulus controller, so they render on both
-  initial loads and Turbo navigation instead of depending on the window `load`
-  event. The controller passes Clerk an absolute `fallbackRedirectUrl` and also
+  `DELETE /sign-out` form, progressively enhanced by a `sign-out` Stimulus
+  controller. When clerk-js is loaded the controller revokes the Clerk session
+  first (with Clerk's own navigation suppressed), then submits the form so
+  `SessionsController` resets the Rails session and performs the single
+  redirect. If Clerk is unavailable or `signOut` rejects, the form submission is
+  the fallback, so sign out always clears the local session. Sign-in and
+  sign-up widgets are mounted by the `clerk-auth` Stimulus controller, so they
+  render on both initial loads and Turbo navigation instead of depending on the
+  window `load` event. The controller passes Clerk an absolute `fallbackRedirectUrl` and also
   redirects when Clerk reports a signed-in user, so a completed sign-in does not
   depend on the widget's own navigation. The test fake honors the same redirect
   option instead of relying only on the test sign-in endpoint's server redirect.
@@ -197,5 +201,6 @@ importing (including idempotency and validation), the command bus and handlers,
 Clerk auth restriction, voting (facts created, switching, withdrawal, state and
 counts projected), current-vote batch lookup, concurrency for vote and
 withdrawal, and browser tests for the listing, Clerk widget mounting, client-side
-sign-in/sign-up redirects, the voting restriction and the full authentication flow
+sign-in/sign-up redirects, sign-out (including the Clerk-failure fallback), the
+voting restriction and the full authentication flow
 (`test/system/auth_flow_test.rb`, Selenium + headless Chrome).

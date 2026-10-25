@@ -112,4 +112,37 @@ class AuthFlowSystemTest < ApplicationSystemTestCase
     assert_current_path root_path
     assert_text "Sign in"
   end
+
+  test "sign out revokes the Clerk session and clears the Rails session" do
+    visit sign_in_path
+    fill_in "user_id", with: "user_sign_out_calls"
+    click_button "Sign in"
+
+    assert_current_path root_path
+    assert_text "user_sign_out_calls"
+
+    page.execute_script("sessionStorage.removeItem('fakeClerkSignOutCalls')")
+    click_button "Sign out"
+
+    assert_current_path root_path
+    assert_text "Sign in"
+    assert_no_text "user_sign_out_calls"
+    assert_equal "1", page.evaluate_script("sessionStorage.getItem('fakeClerkSignOutCalls')")
+  end
+
+  test "sign out still clears the Rails session when Clerk sign out fails" do
+    visit sign_in_path
+    fill_in "user_id", with: "user_sign_out_fallback"
+    click_button "Sign in"
+
+    assert_current_path root_path
+    assert_text "user_sign_out_fallback"
+
+    page.execute_script("window.Clerk.signOut = () => Promise.reject(new Error('boom'))")
+    click_button "Sign out"
+
+    assert_current_path root_path
+    assert_text "Sign in"
+    assert_no_text "user_sign_out_fallback"
+  end
 end

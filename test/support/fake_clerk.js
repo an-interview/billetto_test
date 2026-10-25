@@ -5,8 +5,10 @@
 // mountSignIn / mountSignUp render a form that posts to the test-only
 // /test/sign-in endpoint. After the session is established, the fake follows
 // the component's fallbackRedirectUrl / forceRedirectUrl option, mirroring the
-// real Clerk redirect behavior. signOut posts a DELETE to the application's real
-// /sign-out route, so logout exercises the same controller as production.
+// real Clerk redirect behavior. signOut revokes the fake client session and
+// notifies listeners, like clerk-js; the sign-out Stimulus controller then
+// submits the real DELETE /sign-out form, so logout exercises the same Rails
+// controller as production.
 (function () {
   "use strict";
 
@@ -94,19 +96,18 @@
       mountEl.innerHTML = "";
     },
 
-    signOut: function () {
-      var form = document.createElement("form");
-      form.method = "post";
-      form.action = "/sign-out";
+    // Mirrors clerk-js: revoke the client session and notify listeners. The
+    // fake never navigates; the sign-out controller submits the Rails form,
+    // which is the only navigation in the flow.
+    signOut: function (options) {
+      options = options || {};
 
-      var method = document.createElement("input");
-      method.type = "hidden";
-      method.name = "_method";
-      method.value = "delete";
-      form.appendChild(method);
+      var calls = parseInt(sessionStorage.getItem("fakeClerkSignOutCalls") || "0", 10);
+      sessionStorage.setItem("fakeClerkSignOutCalls", String(calls + 1));
 
-      document.body.appendChild(form);
-      form.submit();
+      this.user = null;
+      this.notify();
+
       return Promise.resolve();
     }
   };
