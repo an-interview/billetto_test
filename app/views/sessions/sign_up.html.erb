@@ -2,22 +2,11 @@
 
 <main class="auth">
   <h1>Sign up</h1>
-  <div id="clerk-sign-up"></div>
+  <div id="clerk-sign-up"
+       data-controller="clerk-auth"
+       data-clerk-auth-mode-value="sign_up"
+       data-clerk-auth-redirect-url-value="<%= root_path %>"></div>
   <p class="auth__hint">
     Already have an account? <%= link_to "Sign in", sign_in_path %>.
   </p>
 </main>
-
-<script>
-  window.addEventListener("load", async () => {
-    if (!window.Clerk) return;
-    await Clerk.load();
-    if (Clerk.user) {
-      window.location = "<%= root_path %>";
-      return;
-    }
-    Clerk.mountSignUp(document.getElementById("clerk-sign-up"), {
-      afterSignUpUrl: "<%= root_path %>"
-    });
-  });
-</script>

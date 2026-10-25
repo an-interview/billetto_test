@@ -157,7 +157,10 @@ DELETE /events/:event_id/vote
   `Clerk::Authenticatable` exposes it. We read the user id from the session token
   claims instead of calling the Clerk API on every request. Sign out is a real
   `DELETE /sign-out` form, progressively enhanced by a Stimulus controller that
-  revokes the Clerk session when clerk-js is present.
+  revokes the Clerk session when clerk-js is present. Sign-in and sign-up widgets
+  are mounted by the `clerk-auth` Stimulus controller, so they render on both
+  initial loads and Turbo navigation instead of depending on the window `load`
+  event.
 - **Command bus**: commands go through a chain of middleware (transaction,
   instrumentation, causation/correlation ids) before reaching their handler, as
   described in the developer guide. Async event handlers restore the causing

@@ -9,6 +9,24 @@ require "application_system_test_case"
 class AuthFlowSystemTest < ApplicationSystemTestCase
   driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1400 ]
 
+  test "sign-in form mounts after Turbo navigation" do
+    visit root_path
+    click_link "Sign in"
+
+    assert_current_path sign_in_path
+    assert_selector "#clerk-sign-in form"
+    assert_field "user_id"
+  end
+
+  test "sign-up form mounts after Turbo navigation" do
+    visit root_path
+    click_link "Sign up"
+
+    assert_current_path sign_up_path
+    assert_selector "#clerk-sign-up form"
+    assert_field "user_id"
+  end
+
   test "sign up, vote, sign out, then voting is restricted again" do
     event = events(:upcoming)
 
